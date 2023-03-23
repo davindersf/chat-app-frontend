@@ -10,9 +10,9 @@ export default function MessageList({ data, userTenantId }: MessageListProps) {
   return (
     <div className="w-full min-h-[400px] h-full">
       <ul className="w-full h-full space-y-2">
-        {data.map((message) => (
+        {data.map((message, idx) => (
           <li
-            key={message.id}
+            key={idx}
             className={`max-w-[70%] ${
               message.createdBy === userTenantId ? "ml-auto" : "mr-auto"
             }`}

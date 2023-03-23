@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import socketIO from "socket.io-client";
+import socketIO, { Socket } from "socket.io-client";
 import MessageComposer from "../../components/message-composer";
 import MessageList from "../../components/message-list";
 import { MessageListProps } from "../../components/message-list/message-list";
@@ -8,6 +8,7 @@ import { MessageWithSender } from "../../components/message/message";
 import { CHAT_ROOM, SOCKET_ENDPOINT } from "../../constants/env-vars.constants";
 import { getMessagesByChannelId } from "../../queries/message.queries";
 import { getUserTenantId } from "../../queries/user.queries";
+import { MessageType } from "../../types/message.types";
 import {
   removeAccessToken,
   removeRefreshToken,
@@ -21,6 +22,41 @@ export default function ChatBox() {
   const [isChatRoomActive, setIsChatRoomActive] = useState(false);
   const [userTenantId, setUserTenantId] = useState<string>();
   const [messages, setMessages] = useState<MessageWithSender[]>([]);
+  let socket: Socket;
+
+  function subscribeToNotification() {
+    socket = socketIO(SOCKET_ENDPOINT, {
+      path: "/socket.io",
+      transports: ["polling"],
+      upgrade: false,
+    });
+
+    socket.on("connect", () => {
+      const chatRooms = [CHAT_ROOM];
+      socket.emit("subscribe-to-channel", chatRooms);
+    });
+
+    socket.on(
+      "userNotif",
+      (notification: { subject: string; body: string; messageId: string }) => {
+        console.log(notification);
+        const updatedMessage: MessageWithSender = {
+          ...notification,
+          channelId: CHAT_ROOM,
+          channelType: "0",
+          sender: notification.subject,
+          id: notification.messageId,
+        };
+
+        if (
+          notification.subject.trim().toLowerCase() !==
+          user?.firstName.trim().toLowerCase()
+        ) {
+          setMessages((prev) => [...prev, updatedMessage]);
+        }
+      }
+    );
+  }
 
   function getMessages() {
     getMessagesByChannelId(CHAT_ROOM).then((data) => {
@@ -33,6 +69,7 @@ export default function ChatBox() {
 
       setMessages(modifiedData);
       setIsChatRoomActive(true);
+      subscribeToNotification();
     });
   }
 
@@ -42,23 +79,10 @@ export default function ChatBox() {
     });
   }, []);
 
-  function subscribeToNotification() {
-    const socket = socketIO(SOCKET_ENDPOINT, {
-      path: "/socket.io",
-      transports: ["polling"],
-      upgrade: false,
-    });
-
-    socket.on("connect", () => {
-      const chatRooms = [CHAT_ROOM];
-      socket.emit("subscribe-to-channel", chatRooms);
-    });
-
-    socket.on("userNotif", (message) => {});
-  }
-
   function handleOnLeave() {
     setMessages([]);
+    setIsChatRoomActive(false);
+    socket.disconnect();
   }
 
   function handleOnLogout() {
