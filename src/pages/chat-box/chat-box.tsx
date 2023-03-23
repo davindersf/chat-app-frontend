@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import socketIO from 'socket.io-client'
+import socketIO from "socket.io-client";
+import MessageComposer from "../../components/message-composer";
 import MessageList from "../../components/message-list";
 import { MessageListProps } from "../../components/message-list/message-list";
+import { MessageWithSender } from "../../components/message/message";
 import { CHAT_ROOM, SOCKET_ENDPOINT } from "../../constants/env-vars.constants";
 import { getMessagesByChannelId } from "../../queries/message.queries";
 import { getUserTenantId } from "../../queries/user.queries";
@@ -14,20 +16,23 @@ import { getUser } from "../../utils/user.utils";
 
 export default function ChatBox() {
   const user = getUser();
+  const username = user?.firstName;
   const navigate = useNavigate();
+  const [isChatRoomActive, setIsChatRoomActive] = useState(false);
   const [userTenantId, setUserTenantId] = useState<string>();
-  const [messages, setMessages] = useState<MessageListProps["data"]>([]);
+  const [messages, setMessages] = useState<MessageWithSender[]>([]);
 
   function getMessages() {
     getMessagesByChannelId(CHAT_ROOM).then((data) => {
       const modifiedData = data.map((message) => {
         if (message.subject === userTenantId) {
-          return { ...message, sender: user?.firstName ?? "" };
+          return { ...message, sender: username ?? "" };
         }
         return { ...message, sender: message.subject ?? "" };
       });
 
       setMessages(modifiedData);
+      setIsChatRoomActive(true);
     });
   }
 
@@ -39,19 +44,17 @@ export default function ChatBox() {
 
   function subscribeToNotification() {
     const socket = socketIO(SOCKET_ENDPOINT, {
-      path: '/socket.io',
-      transports: ['polling'],
+      path: "/socket.io",
+      transports: ["polling"],
       upgrade: false,
-    })
+    });
 
-    socket.on('connect', () => {
-      const chatRooms = [CHAT_ROOM]
-      socket.emit('subscribe-to-channel', chatRooms)
-    })
+    socket.on("connect", () => {
+      const chatRooms = [CHAT_ROOM];
+      socket.emit("subscribe-to-channel", chatRooms);
+    });
 
-    socket.on('userNotif', message => {
-      
-    })
+    socket.on("userNotif", (message) => {});
   }
 
   function handleOnLeave() {
@@ -62,6 +65,10 @@ export default function ChatBox() {
     removeAccessToken();
     removeRefreshToken();
     navigate("/login");
+  }
+
+  function handleAddMessageToList(message: MessageWithSender) {
+    setMessages((prev) => [...prev, message]);
   }
 
   return (
@@ -103,6 +110,13 @@ export default function ChatBox() {
             "Loading..."
           )}
         </div>
+
+        <MessageComposer
+          channelId={CHAT_ROOM}
+          username={username!}
+          onMessageSuccess={handleAddMessageToList}
+          disabled={isChatRoomActive}
+        />
       </div>
     </div>
   );

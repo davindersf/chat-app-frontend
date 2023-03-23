@@ -7,3 +7,8 @@ export async function getMessagesByChannelId(channelId: string) {
   );
   return data;
 }
+
+export async function sendMessage(message: MessageType) {
+  const { data } = await client.post<MessageType>("/messages", message);
+  return data;
+}

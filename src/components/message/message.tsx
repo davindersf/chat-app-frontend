@@ -1,9 +1,9 @@
 import type { MessageType } from "../../types/message.types";
 
-type MessageWithSender =MessageType & { sender: string };
+export type MessageWithSender = MessageType & { sender: string };
 
 export type MessageProps = {
-  data: MessageWithSender 
+  data: MessageWithSender;
 };
 
 export default function Message({ data }: MessageProps) {
