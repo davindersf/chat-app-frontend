@@ -5,7 +5,9 @@ import {
   AUTH_CLIENT_SECRET,
 } from "../constants/env-vars.constants";
 import { AccessTokenResponse } from "../types/auth.types";
+import { client } from "../utils/client.utils";
 import { getKeys } from "../utils/object.utils";
+import { getRefreshToken } from "../utils/session-storage";
 
 export async function googleOAuthLogin() {
   const form = document.createElement("form");
@@ -49,5 +51,14 @@ export async function loginByCredentials(username: string, password: string) {
       password,
     }
   );
-  return data
+  return data;
+}
+
+export async function refreshAccessToken() {
+  const refreshToken = getRefreshToken();
+  const { data } = await client.post<AccessTokenResponse>(
+    `${AUTH_API_URL}/auth/login`,
+    { refreshToken }
+  );
+  return data;
 }
